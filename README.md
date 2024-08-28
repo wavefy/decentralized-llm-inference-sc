@@ -1,6 +1,9 @@
 # Decentralized LLM Inferencing SC PoC
 
-A Proof of concept Smartcontract on the Aptos Blockchain for the Decentralized LLM Inferencing Project.
+A Proof of Concept Smartcontract on the Aptos Blockchain for the Decentralized LLM Inferencing Project.
+
+## Prerequisites
+https://github.com/wavefy/decentralized-llm-inference-runner
 
 ## Actors
 - User: The one initialized the server chain
@@ -17,7 +20,7 @@ Each session will contain information about:
 
 The session can only be claimed from its topped-up balance when:
 - The user submit a completion notice by calling `update_token_count`
-- The individual servers, after completing the generation can now claim from the Session `claim_tokens`
+- The individual servers, after completing the generation can now claim from the Session `claim_tokens`, with their generated token count in one the parameters.
 
 ## Existing problems
 Due to this being purely a PoC to showcase the main function, the following problems are currently not dealt with:
