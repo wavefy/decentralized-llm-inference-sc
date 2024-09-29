@@ -32,22 +32,43 @@ Due to this being purely a PoC to showcase the main function, the following prob
 ## Deploy information
 Currently deployed on `devnet`.
 
-Address: `0xdaa36db121c34bb7aa2b095b4c1d7938e44cd0863a354ed0c8f9b42ee270de66`
+Address:
+- Devnet: `0xdcec456d7101b016c09f4f49dd6e642e68c8d04ca028282df74abe37d2417fc8`
+- Testnet: `0x9123e2561d81ba5f77473b8dc664fa75179c841061d12264508894610b9d0b7a`
 
 ### Log:
+#### Devnet
 ```
-Transaction submitted: https://explorer.aptoslabs.com/txn/0xb5042aa58ad2f547c8650418c9d9d3cac4cd7086e8f78bd14a97a4eacdd52daa?network=devnet
+Transaction submitted: https://explorer.aptoslabs.com/txn/0xc5cb87df1a05890beb4b2c963ac0fcb51ed19c10647973d941fe7ff086a51a0e?network=devnet
 {
   "Result": {
-    "transaction_hash": "0xb5042aa58ad2f547c8650418c9d9d3cac4cd7086e8f78bd14a97a4eacdd52daa",
-    "gas_used": 2805,
+    "transaction_hash": "0xc5cb87df1a05890beb4b2c963ac0fcb51ed19c10647973d941fe7ff086a51a0e",
+    "gas_used": 2915,
     "gas_unit_price": 100,
-    "sender": "daa36db121c34bb7aa2b095b4c1d7938e44cd0863a354ed0c8f9b42ee270de66",
+    "sender": "dcec456d7101b016c09f4f49dd6e642e68c8d04ca028282df74abe37d2417fc8",
     "sequence_number": 0,
     "success": true,
-    "timestamp_us": 1724835494747928,
-    "version": 621947,
+    "timestamp_us": 1726473751042814,
+    "version": 67435255,
     "vm_status": "Executed successfully"
   }
 }
+```
+#### Testnet
+```
+Transaction submitted: https://explorer.aptoslabs.com/txn/0xe686cff96d2f29bc33241d961573328ac545aca8dbf9b1410fa4323730325689?network=testnet
+{
+  "Result": {
+    "transaction_hash": "0xe686cff96d2f29bc33241d961573328ac545aca8dbf9b1410fa4323730325689",
+    "gas_used": 2916,
+    "gas_unit_price": 100,
+    "sender": "9123e2561d81ba5f77473b8dc664fa75179c841061d12264508894610b9d0b7a",
+    "sequence_number": 0,
+    "success": true,
+    "timestamp_us": 1726645043478338,
+    "version": 6002973433,
+    "vm_status": "Executed successfully"
+  }
+}
+
 ```

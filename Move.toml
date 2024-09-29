@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-"dllm_addr" = "0xdaa36db121c34bb7aa2b095b4c1d7938e44cd0863a354ed0c8f9b42ee270de66"
+"dllm_addr" = "0x9123e2561d81ba5f77473b8dc664fa75179c841061d12264508894610b9d0b7a"
 
 [dev-addresses]
 
