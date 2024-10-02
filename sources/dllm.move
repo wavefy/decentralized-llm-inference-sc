@@ -73,6 +73,7 @@ module dllm_addr::dllm {
     layers: vector<u64>,
     price_per_token: u64,
     max_tokens: u64,
+    claimed: vector<address>,
   }
 
   public entry fun deposit(account: &signer, amount: u64) acquires RewardPool {
@@ -184,7 +185,14 @@ module dllm_addr::dllm {
       price_per_token: session.price_per_token,
       max_tokens: session.max_tokens,
       layers: session.layers,
+      claimed: session.claimed,
     }
+  }
+
+  #[view]
+  public fun get_balance(signer_address: address): u64 acquires RewardPool {
+    let pool = borrow_global<RewardPool>(signer_address);
+    coin::value(&pool.coins)
   }
 
 

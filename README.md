@@ -33,13 +33,13 @@ Due to this being purely a PoC to showcase the main function, the following prob
 Currently deployed on `Testnet`.
 
 Address:
-- Testnet: `0x61f5b2922640ee625c6ef99c5a3713820941874e96be6b1215ee80e8a59e2cc1`
+- Testnet: `0x696fd585308e07d82aefc45df064eb75342256b1ed5305b3955213b4b0fdf3b4`
 
 ### Log:
 #### Testnet
 ```
-Transaction submitted: https://explorer.aptoslabs.com/txn/0x6df4bbf32e70cb8471a41e578e4b2d75c2114cddd8a9483a80a28508d120f61a?network=testnet
-Code was successfully deployed to object address {}. 0x61f5b2922640ee625c6ef99c5a3713820941874e96be6b1215ee80e8a59e2cc1
+Transaction submitted: https://explorer.aptoslabs.com/txn/0x5db6e24538a5d3653772ead1dbcb142e5afdeafc3692e52d4e634a601abe753e?network=testnet
+Code was successfully deployed to object address {}. 0x696fd585308e07d82aefc45df064eb75342256b1ed5305b3955213b4b0fdf3b4
 {
   "Result": "Success"
 }
