@@ -5,13 +5,14 @@ module dllm_addr::test_utils {
   use aptos_framework::account;
   use aptos_framework::timestamp;
   use aptos_framework::signer;
+  use aptos_std::ed25519;
 
   public inline fun setup(
         aptos_framework: &signer,
         client: &signer,
         server_a: &signer,
         server_b: &signer,
-    ): (address, address, address) {
+    ): (address, address, address, ed25519::SecretKey, ed25519::UnvalidatedPublicKey) {
         timestamp::set_time_has_started_for_testing(aptos_framework);
         let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(aptos_framework);
 
@@ -37,6 +38,9 @@ module dllm_addr::test_utils {
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);
 
-        (client_addr, server_a_addr, server_b_addr)
+        let (sk, vpk) = ed25519::generate_keys();
+        let pk = ed25519::public_key_into_unvalidated(vpk);
+
+        (client_addr, server_a_addr, server_b_addr, sk, pk)
     }
 }

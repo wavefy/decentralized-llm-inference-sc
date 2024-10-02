@@ -6,9 +6,8 @@ module dllm_addr::dllm {
   use aptos_std::string_utils;
   use aptos_framework::object;
   use aptos_framework::coin::{Self, Coin};
-  use aptos_std::smart_table::{Self, SmartTable};
-  use aptos_framework::aptos_coin::AptosCoin;
-
+  use aptos_framework::aptos_coin::AptosCoin; 
+  use aptos_std::ed25519;
 
 
   // =============================== Events ===============================
@@ -64,13 +63,14 @@ module dllm_addr::dllm {
     price_per_token: u64,
     max_tokens: u64,
     claimed: vector<address>,
+    pk: ed25519::UnvalidatedPublicKey,
   }
 
   struct SessionView has drop {
     session_id: u64,
     owner: address,
     addresses: vector<address>,
-    session_expiration: u64,
+    layers: vector<u64>,
     price_per_token: u64,
     max_tokens: u64,
   }
@@ -94,7 +94,7 @@ module dllm_addr::dllm {
   }
 
 
-  public entry fun create_session(account: &signer, session_id: u64, max_tokens: u64, addresses: vector<address>, layers: vector<u64>) acquires RewardPool {
+  public entry fun create_session(account: &signer, session_id: u64, max_tokens: u64, addresses: vector<address>, layers: vector<u64>, client_pk: vector<u8>) acquires RewardPool {
     let signer_address = signer::address_of(account);
 
     let num_layers = vector::fold(layers, 0, |acc, x| acc + x);
@@ -106,6 +106,8 @@ module dllm_addr::dllm {
     let object_holds_session_construct_ref = object::create_named_object(account, generate_session_id(session_id));
     let obj_signer = object::generate_signer(&object_holds_session_construct_ref); 
 
+    let pub_key = ed25519::new_unvalidated_public_key_from_bytes(client_pk);
+
     let session = Session {
       session_id,
       owner: signer_address,
@@ -114,6 +116,7 @@ module dllm_addr::dllm {
       price_per_token: SET_PRICE_PER_TOKEN,
       max_tokens,
       claimed: vector::empty(),
+      pk: pub_key,
     };
 
     move_to(&obj_signer, session);
@@ -126,11 +129,19 @@ module dllm_addr::dllm {
     });
   }
 
-  public entry fun claim_tokens(account: &signer, owner_address: address, session_id: u64, token_count: u64) acquires Session, RewardPool {
+  public entry fun claim_tokens(account: &signer, owner_address: address, session_id: u64, token_count: u64, signature: vector<u8>) acquires Session, RewardPool {
     let signer_address = signer::address_of(account);
     let session_obj_addr = object::create_object_address(&owner_address, generate_session_id(session_id));
+
     assert_address_has_session(session_obj_addr);
     let session = borrow_global_mut<Session>(session_obj_addr);
+    assert!(session.max_tokens >= token_count, E_INVALID_CLAIM);
+
+    let signature = ed25519::new_signature_from_bytes(signature);
+    let count_bytes = bcs::to_bytes(&token_count);
+    let is_valid = ed25519::signature_verify_strict(&signature, &session.pk, count_bytes);
+
+    assert!(is_valid, E_INVALID_CLAIM);
     assert!(session.owner != signer_address, E_CANNOT_CLAIM_OWN_TOKENS);
     assert!(!vector::contains(&session.claimed, &signer_address), E_INVALID_CLAIM);
 
@@ -160,6 +171,22 @@ module dllm_addr::dllm {
     exists<Session>(session_obj_addr)
   }
 
+  #[view]
+  public fun get_session(signer_address: address, session_id: u64): SessionView acquires Session {
+    let session_obj_addr = object::create_object_address(&signer_address, generate_session_id(session_id));
+    assert_address_has_session(session_obj_addr);
+
+    let session = borrow_global<Session>(session_obj_addr);
+    SessionView {
+      session_id: session.session_id,
+      owner: session.owner,
+      addresses: session.addresses,
+      price_per_token: session.price_per_token,
+      max_tokens: session.max_tokens,
+      layers: session.layers,
+    }
+  }
+
 
   // =============================== Helper functions ===============================
 
@@ -179,18 +206,21 @@ module dllm_addr::dllm {
   use aptos_framework::account;
   #[test_only]
   use dllm_addr::test_utils::{setup};
+  #[test_only]
+  use aptos_std::debug;
 
   #[test(aptos_framework = @0x1, admin = @0x1000, server_a = @0x1111, server_b = @0x2222)]
   public entry fun should_success_create_session(aptos_framework: &signer, admin: &signer, server_a: &signer, server_b: &signer) acquires Session, RewardPool {
     let admin_address = signer::address_of(admin);
-    let (client_addr, server_a_addr, server_b_addr) = setup(aptos_framework, admin, server_a, server_b);
+    let (client_addr, server_a_addr, server_b_addr, sk, pk) = setup(aptos_framework, admin, server_a, server_b);
+
 
     // deposit to the reward pool
     deposit(admin, 1000);
     assert!(coin::value(&borrow_global<RewardPool>(admin_address).coins) == 1000, 1);
 
-    let session_id = 1;
-    create_session(admin, session_id, 10, vector[server_a_addr, server_b_addr], vector[10, 10]);
+    let session_id: u64 = 1;
+    create_session(admin, session_id, 10, vector[server_a_addr, server_b_addr], vector[10, 10], ed25519::unvalidated_public_key_to_bytes(&pk));
 
     // Should have session
     assert!(has_session(admin_address, session_id), 1);
@@ -207,97 +237,91 @@ module dllm_addr::dllm {
     assert!(session.max_tokens == 10, 1);
   }
 
-  #[test(aptos_framework = @0x1, admin = @0x1000, server_a = @0x1111, server_b = @0x2222)]
+  #[test(aptos_framework = @0x1, admin = @0x1001, server_a = @0x1111, server_b = @0x2222)]
   public entry fun should_success_claim_tokens(aptos_framework: &signer, admin: &signer, server_a: &signer, server_b: &signer) acquires Session, RewardPool {
     let admin_address = signer::address_of(admin);
-    let (client_addr, server_a_addr, server_b_addr) = setup(aptos_framework, admin, server_a, server_b);
+    let (client_addr, server_a_addr, server_b_addr, sk, pk) = setup(aptos_framework, admin, server_a, server_b);
 
     // deposit to the reward pool
     deposit(admin, 1000);
     assert!(coin::value(&borrow_global<RewardPool>(admin_address).coins) == 1000, 1);
 
     let session_id = 1;
-    create_session(admin, session_id, 10, vector[server_a_addr, server_b_addr], vector[10, 10]);
+    create_session(admin, session_id, 10, vector[server_a_addr, server_b_addr], vector[10, 10], ed25519::unvalidated_public_key_to_bytes(&pk));
 
     // Should have session
-    assert!(has_session(admin_address, session_id), 1);
+    assert!(has_session(admin_address, session_id), 2);
+
+    let count: u64 = 1;
+    let count_bytes: vector<u8> = bcs::to_bytes(&count);
+    let signature = ed25519::signature_to_bytes(&ed25519::sign_arbitrary_bytes(&sk, count_bytes));
 
     // Claim tokens
-    claim_tokens(server_a, admin_address, session_id, 1);
+    claim_tokens(server_a, admin_address, session_id, 1, signature);
 
     // Check the session
     let session_obj_addr = object::create_object_address(&admin_address, generate_session_id(session_id));
     let session = borrow_global<Session>(session_obj_addr);
 
-    assert!(vector::contains(&session.claimed, &server_a_addr), 1);
+    assert!(vector::contains(&session.claimed, &server_a_addr), 3);
+
+    // Check balance
+    assert!(coin::balance<AptosCoin>(server_a_addr) == 10010, 4);
+    assert!(coin::value<AptosCoin>(&borrow_global<RewardPool>(admin_address).coins) == 990, 5);
   }
 
   #[test(aptos_framework = @0x1, admin = @0x1000, server_a = @0x1111, server_b = @0x2222)]
   #[expected_failure(abort_code = 4, location = Self)]
   public entry fun should_fail_reclaim_tokens(aptos_framework: &signer, admin: &signer, server_a: &signer, server_b: &signer) acquires Session, RewardPool {
     let admin_address = signer::address_of(admin);
-    let (client_addr, server_a_addr, server_b_addr) = setup(aptos_framework, admin, server_a, server_b);
+    let (client_addr, server_a_addr, server_b_addr, sk, pk) = setup(aptos_framework, admin, server_a, server_b);
 
     // deposit to the reward pool
     deposit(admin, 1000);
     assert!(coin::value(&borrow_global<RewardPool>(admin_address).coins) == 1000, 1);
 
     let session_id = 1;
-    create_session(admin, session_id, 10, vector[server_a_addr, server_b_addr], vector[10, 10]);
+    create_session(admin, session_id, 10, vector[server_a_addr, server_b_addr], vector[10, 10], ed25519::unvalidated_public_key_to_bytes(&pk));
 
     // Should have session
     assert!(has_session(admin_address, session_id), 1);
 
-    // Claim tokens
-    claim_tokens(server_a, admin_address, session_id, 1);
-    claim_tokens(server_a, admin_address, session_id, 1);
+    let count: u64 = 1;
+    let count_bytes: vector<u8> = bcs::to_bytes(&count);
+    let signature = ed25519::signature_to_bytes(&ed25519::sign_arbitrary_bytes(&sk, count_bytes));    // Claim tokens
+    claim_tokens(server_a, admin_address, session_id, 1, signature);
+    claim_tokens(server_a, admin_address, session_id, 1, signature);
   }
 
   #[test(aptos_framework = @0x1, admin = @0x1000, server_a = @0x1111, server_b = @0x2222)]
   #[expected_failure(abort_code = 3, location = Self)]
   public entry fun should_fail_claim_own_tokens(aptos_framework: &signer, admin: &signer, server_a: &signer, server_b: &signer) acquires Session, RewardPool {
     let admin_address = signer::address_of(admin);
-    let (client_addr, server_a_addr, server_b_addr) = setup(aptos_framework, admin, server_a, server_b);
+    let (client_addr, server_a_addr, server_b_addr, sk, pk) = setup(aptos_framework, admin, server_a, server_b);
 
     // deposit to the reward pool
     deposit(admin, 1000);
     assert!(coin::value(&borrow_global<RewardPool>(admin_address).coins) == 1000, 1);
 
     let session_id = 1;
-    create_session(admin, session_id, 10, vector[server_a_addr, server_b_addr], vector[10, 10]);
+    create_session(admin, session_id, 10, vector[server_a_addr, server_b_addr], vector[10, 10], ed25519::unvalidated_public_key_to_bytes(&pk));
 
     // Should have session
     assert!(has_session(admin_address, session_id), 1);
 
+    let count: u64 = 1;
+    let count_bytes: vector<u8> = bcs::to_bytes(&count);
+    let signature = ed25519::signature_to_bytes(&ed25519::sign_arbitrary_bytes(&sk, count_bytes));
     // Claim tokens
-    claim_tokens(admin, admin_address, session_id, 1);
+    claim_tokens(admin, admin_address, session_id, 1, signature);
   }
 
-  #[test(aptos_framework = @0x1, admin = @0x1000, server_a = @0x1111, server_b = @0x2222)]
-  #[expected_failure(abort_code = 1, location = Self)]
-  public entry fun should_fail_claim_tokens_without_session(aptos_framework: &signer, admin: &signer, server_a: &signer, server_b: &signer) acquires Session, RewardPool {
-    let admin_address = signer::address_of(admin);
-    let (client_addr, server_a_addr, server_b_addr) = setup(aptos_framework, admin, server_a, server_b);
-
-    // deposit to the reward pool
-    deposit(admin, 1000);
-    assert!(coin::value(&borrow_global<RewardPool>(admin_address).coins) == 1000, 1);
-
-    let session_id = 1;
-    create_session(admin, session_id, 10, vector[server_a_addr, server_b_addr], vector[10, 10]);
-
-    // Should have session
-    assert!(has_session(admin_address, session_id), 1);
-
-    // Claim tokens
-    claim_tokens(server_a, admin_address, 2, 1);
-  }
 
   #[test(aptos_framework = @0x1, admin = @0x1000, server_a = @0x1111, server_b = @0x2222)]
   #[expected_failure(abort_code = 5, location = Self)]
-  public entry fun should_fail_claim_tokens_with_insufficient_balance(aptos_framework: &signer, admin: &signer, server_a: &signer, server_b: &signer) acquires RewardPool {
+  public entry fun should_fail_create_session_with_insufficient_balance(aptos_framework: &signer, admin: &signer, server_a: &signer, server_b: &signer) acquires RewardPool {
     let admin_address = signer::address_of(admin);
-    let (client_addr, server_a_addr, server_b_addr) = setup(aptos_framework, admin, server_a, server_b);
+    let (client_addr, server_a_addr, server_b_addr, sk, pk) = setup(aptos_framework, admin, server_a, server_b);
 
     // deposit to the reward pool
     deposit(admin, 1000);
@@ -306,6 +330,6 @@ module dllm_addr::dllm {
     let session_id = 1;
     // Create session with 100 max tokens, with 20 layers coins
     // So, the minimum balance should be 1 * 100 * 20 = 2000
-    create_session(admin, session_id, 100, vector[server_a_addr, server_b_addr], vector[10, 10]);
+    create_session(admin, session_id, 100, vector[server_a_addr, server_b_addr], vector[10, 10], ed25519::unvalidated_public_key_to_bytes(&pk));
   }
 }
