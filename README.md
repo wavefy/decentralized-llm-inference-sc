@@ -10,38 +10,29 @@ https://github.com/wavefy/decentralized-llm-inference-runner
 - Server
 
 ## Concept
-For every conversation there exists a Session on the contract.
+For every Chat there exists a Session on the contract.
 Each session will contain information about:
 - The price per tokens generated
 - The addresses for each of the server in the selected servers chain
 - The owner of the session
 - The maximum number of tokens: This will act as a way for the user to topup their balance before requesting for action
-- The current token count: an indication of how many of the output token that the user have received from the server chain multiplied by the number of servers in the server chain.
+- The addresses participated in the session.
+- The layers of each of the addresses.
 
-The session can only be claimed from its topped-up balance when:
-- The user submit a completion notice by calling `update_token_count`
-- The individual servers, after completing the generation can now claim from the Session `claim_tokens`, with their generated token count in one the parameters.
-
-## Existing problems
-Due to this being purely a PoC to showcase the main function, the following problems are currently not dealt with:
-- Coin Transaction / Top-up Balance
-- Reentrancy Attacks
-- Server can forge their own false tickets to claim more than its reward.
-- User can forge their own false token_count.
+After each session, the participated server can claim their reward by submiting a signed ticket to the contract.
 
 ## Deploy information
 Currently deployed on `Testnet`.
 
 Address:
-- Testnet: `0x696fd585308e07d82aefc45df064eb75342256b1ed5305b3955213b4b0fdf3b4`
+- Testnet: `0xf4289dca4fe79c4e61fe1255d7f47556c38f512b5cf9ddf727f0e44a5c6a6b00`
 
 ### Log:
 #### Testnet
 ```
-Transaction submitted: https://explorer.aptoslabs.com/txn/0x5db6e24538a5d3653772ead1dbcb142e5afdeafc3692e52d4e634a601abe753e?network=testnet
-Code was successfully deployed to object address {}. 0x696fd585308e07d82aefc45df064eb75342256b1ed5305b3955213b4b0fdf3b4
+Transaction submitted: https://explorer.aptoslabs.com/txn/0x95b396b11467b094df2a7f4f10a97ed3a7937f93b61fbf43e8397265d8215345?network=testnet
+Code was successfully deployed to object address 0xf4289dca4fe79c4e61fe1255d7f47556c38f512b5cf9ddf727f0e44a5c6a6b00
 {
   "Result": "Success"
 }
-
 ```

@@ -1,6 +1,7 @@
 module dllm_addr::dllm {
   use std::bcs;
   use std::signer;
+  use std::timestamp; 
   use std::vector;
   use aptos_framework::event;
   use aptos_std::string_utils;
@@ -17,6 +18,9 @@ module dllm_addr::dllm {
     owner: address,
     price_per_token: u64,
     max_tokens: u64,
+    addresses: vector<address>,
+    layers: vector<u64>,
+    ts: u64,
   }
 
   #[event]
@@ -25,6 +29,8 @@ module dllm_addr::dllm {
     owner: address,
     claimer: address,
     token_count: u64,
+    total_reward: u64,
+    ts: u64,
   }
 
   #[event]
@@ -121,12 +127,17 @@ module dllm_addr::dllm {
     };
 
     move_to(&obj_signer, session);
+    let ts = timestamp::now_seconds();
+
 
     event::emit(SessionCreated {
       session_id,
       owner: signer_address,
       price_per_token: SET_PRICE_PER_TOKEN,
       max_tokens,
+      addresses,
+      layers,
+      ts
     });
   }
 
@@ -156,11 +167,14 @@ module dllm_addr::dllm {
 
     vector::push_back(&mut session.claimed, signer_address);
 
+    let ts = timestamp::now_seconds();
     event::emit(TokenClaimed {
       session_id,
       owner: owner_address,
       claimer: signer_address,
       token_count,
+      total_reward,
+      ts,
     });
   }
 
