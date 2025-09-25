@@ -1,0 +1,22 @@
+{
+  "name": "dllm-solidity",
+  "version": "1.0.0",
+  "description": "Decentralized LLM Inference Smart Contract - Solidity Version",
+  "main": "index.js",
+  "scripts": {
+    "compile": "pnpm exec hardhat compile",
+    "test": "pnpm exec hardhat test",
+    "deploy": "pnpm exec hardhat run scripts/deploy.js",
+    "node": "pnpm exec hardhat node"
+  },
+  "keywords": ["solidity", "ethereum", "llm", "decentralized", "smart-contract"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0"
+  }
+}
